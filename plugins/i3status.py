@@ -16,7 +16,7 @@ class I3StatusPlugin(StatusPlugin):
         """
         self.status_file = Path(status_file)
         self.status_file.parent.mkdir(parents=True, exist_ok=True)
-        self.update_status(Status.IDLE)
+        self.update_status(Status.NOT_STARTED)
     
     def update_status(self, status: Status):
         """Update the status file with current application state.
@@ -31,9 +31,15 @@ class I3StatusPlugin(StatusPlugin):
         elif status == Status.PROCESSING:
             text = "🔄 Processing..."
             color = "#ffa500"  # Orange
-        else:  # IDLE
+        elif status == Status.IDLE:
+            text = "⏸️ Idle"
+            color = "#888888"  # Gray
+        elif status == Status.NOT_STARTED:
+            text = "⚪ Not Started"
+            color = "#666666"  # Dark gray
+        else:
             text = ""
-            color = "#ffffff"  # White (or no display)
+            color = "#ffffff"  # White (fallback)
         
         # i3bar JSON format
         block = {

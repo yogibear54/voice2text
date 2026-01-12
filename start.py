@@ -485,6 +485,9 @@ class VoiceDictationTool:
         print("  Press Ctrl+C to exit.")
         print("=" * 60 + "\n")
         
+        # Set status to IDLE now that app is ready
+        self.status_manager.set_status(Status.IDLE)
+        
         # Set up global keyboard hook for all key events
         keyboard.hook(self._on_key_event)
         

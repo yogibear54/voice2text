@@ -5,6 +5,7 @@ from enum import Enum
 
 class Status(Enum):
     """Application status states."""
+    NOT_STARTED = "not_started"
     IDLE = "idle"
     RECORDING = "recording"
     PROCESSING = "processing"
@@ -14,7 +15,7 @@ class StatusManager:
     """Manages application status and notifies registered plugins."""
     
     def __init__(self):
-        self.status = Status.IDLE
+        self.status = Status.NOT_STARTED
         self.plugins: List = []
     
     def register_plugin(self, plugin):
