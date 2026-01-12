@@ -1,10 +1,10 @@
-# i3status Wrapper Setup Guide
+# i3status Plugin Setup Guide
 
-This guide explains how to set up the i3status wrapper script to inject voice2text status into your i3bar.
+This guide explains how to set up the i3status plugin to display voice2text status in your i3bar.
 
 ## Overview
 
-The wrapper script method pipes i3status output through a Python script that:
+The i3status plugin uses a wrapper script method that pipes i3status output through a Python script that:
 1. Reads JSON from i3status (stdin)
 2. Parses the i3bar JSON format
 3. Injects the voice2text status block
@@ -39,7 +39,7 @@ bar {
 **After:**
 ```i3
 bar {
-    status_command i3status | /home/yogibear54/Projects/lotus-creations.com/_PROJECTS/voice2text/i3status_wrapper.py
+    status_command i3status | /path/to/voice2text/i3status_wrapper.py
 }
 ```
 
@@ -59,11 +59,12 @@ After making the changes, reload i3:
 ### 4. Verify
 
 1. Start your voice2text application (`start.py`)
-2. Press `Ctrl+Alt` to start recording
-3. You should see the voice2text status appear in your i3bar:
-   - 🔴 Recording... (red) when recording
-   - 🔄 Processing... (orange) when processing
-   - (nothing) when idle
+2. You should see the voice2text status appear in your i3bar with the following states:
+   - **⚪ Not Started** (dark gray) - When the app is created but not yet initialized
+   - **⏸️ Idle** (gray) - When the app is ready and waiting for input
+   - **🔴 Recording...** (red) - When recording audio (press and hold Ctrl+Alt)
+   - **🔄 Processing...** (orange) - When transcribing audio
+3. The status will automatically update as you use the application
 
 ## How It Works
 
@@ -72,6 +73,23 @@ After making the changes, reload i3:
 3. **i3bar** displays all the blocks, including the injected voice2text status
 
 The wrapper script reads the voice2text status from `/tmp/voice2text_status` (or the path specified by `I3_STATUS_FILE` environment variable), which is written by the `I3StatusPlugin` in your voice2text application.
+
+## Status States
+
+The voice2text application has four status states that are displayed in your i3bar:
+
+| Status | Display | Color | Description |
+|--------|---------|-------|-------------|
+| **NOT_STARTED** | ⚪ Not Started | Dark Gray (#666666) | App is created but not yet initialized |
+| **IDLE** | ⏸️ Idle | Gray (#888888) | App is ready and waiting for input |
+| **RECORDING** | 🔴 Recording... | Red (#ff0000) | Currently recording audio |
+| **PROCESSING** | 🔄 Processing... | Orange (#ffa500) | Transcribing recorded audio |
+
+The status automatically transitions:
+- `NOT_STARTED` → `IDLE` when the app finishes initialization
+- `IDLE` → `RECORDING` when you press Ctrl+Alt
+- `RECORDING` → `PROCESSING` when you release Ctrl+Alt
+- `PROCESSING` → `IDLE` when transcription completes
 
 ## Troubleshooting
 
@@ -139,6 +157,12 @@ If you see "Error: Could not parse JSON" in your i3bar:
    # Watch the status file
    watch -n 1 cat /tmp/voice2text_status
    ```
+
+4. Verify the status changes as you use the app:
+   - When the app first starts, you should see "⚪ Not Started"
+   - After initialization, it should change to "⏸️ Idle"
+   - When recording, it should show "🔴 Recording..."
+   - During transcription, it should show "🔄 Processing..."
 
 ### Permission errors
 

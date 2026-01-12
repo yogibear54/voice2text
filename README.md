@@ -134,6 +134,7 @@ Option 1 - Use the helper script (recommended):
 ```bash
 ./run.sh
 ```
+**Note:** The `run.sh` script requires `sudo` privileges. It will prompt you for your password to run the application with root permissions, which are necessary for global keyboard hotkey detection on Linux.
 
 Option 2 - Use sudo with venv Python directly:
 ```bash
@@ -466,7 +467,7 @@ voice2text/
 ├── .env.example          # Example environment variables file
 ├── .env                  # Your environment variables (create from .env.example)
 ├── .gitignore            # Git ignore rules
-├── run.sh                # Helper script for Linux (runs with sudo)
+├── run.sh                # Helper script for Linux (requires sudo for global hotkeys)
 ├── recordings.json       # Transcription history (created automatically)
 ├── temp/                 # Temporary audio files directory
 ├── venv/                 # Virtual environment (created during setup)
@@ -481,7 +482,7 @@ voice2text/
 - **`plugins/`**: Directory containing status indicator plugins
   - **`base.py`**: Base class (`StatusPlugin`) that all plugins must inherit from
   - **`i3status.py`**: Plugin for i3 status bar integration
-- **`run.sh`**: Helper script for Linux that automatically uses sudo with the correct Python path
+- **`run.sh`**: Helper script for Linux that automatically uses sudo with the correct Python path. **Requires sudo privileges** - it will prompt for your password to enable global keyboard hotkey detection.
 - **`recordings.json`**: JSON file storing all transcription history with timestamps
 - **`temp/`**: Directory for temporary WAV files (automatically cleaned up after processing)
 
@@ -579,7 +580,11 @@ When using `sudo`, it runs with root's environment which doesn't have your virtu
 sudo venv/bin/python start.py
 ```
 
-Or use the helper script: `./run.sh`
+Or use the helper script (requires sudo):
+```bash
+./run.sh
+```
+**Note:** The `run.sh` script will prompt for your sudo password to enable global keyboard hotkey detection.
 
 ### Status Indicator Not Showing in i3 Bar
 
