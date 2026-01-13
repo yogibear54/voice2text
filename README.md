@@ -14,6 +14,8 @@ A local Python application that captures voice input via global hotkeys, transcr
 - **Maximum Recording Duration**: Configurable limit to prevent excessive recordings
 - **Status Indicators**: Visual indicators for "recording..." and "processing..." modes
 - **Plugin System**: Extensible plugin architecture for custom status displays (e.g., i3 status bar integration)
+- **Provider Architecture**: Extensible provider system supporting multiple transcription services (currently Replicate)
+- **Comprehensive Testing**: Full test suite with 60+ tests covering all major functionality
 
 ## Requirements
 
@@ -55,6 +57,13 @@ pyperclip==1.8.2          # Clipboard operations
 pyautogui==0.9.54         # Auto-paste functionality
 python-dotenv==1.0.0      # Environment variable management
 requests>=2.31.0          # HTTP requests for file upload
+
+# Testing dependencies
+pytest>=7.4.0             # Testing framework
+pytest-mock>=3.11.0       # Enhanced mocking capabilities
+pytest-cov>=4.1.0         # Code coverage reporting
+pytest-timeout>=2.1.0     # Prevent hanging tests
+responses>=0.23.0         # Mock HTTP requests
 ```
 
 ## Installation
@@ -248,7 +257,16 @@ Clean Up Temp WAV File
 - Uses `scipy.io.wavfile.write()` for reliable WAV file creation
 - Saves to `temp/` directory with timestamped filename
 
-#### 4. Replicate API Integration
+#### 4. Transcription Provider System
+
+The application uses a provider-based architecture for transcription services:
+
+- **Provider Abstraction**: Abstract base class (`providers/base.py`) defines the interface
+- **Replicate Provider**: Concrete implementation (`providers/replicate.py`) for Replicate API
+- **Extensibility**: Easy to add new providers (OpenAI, Google, Azure, etc.)
+- **Factory Pattern**: Provider factory (`providers/__init__.py`) instantiates providers based on config
+
+#### 5. Replicate API Integration (via ReplicateProvider)
 
 **File Upload (`_upload_audio_to_replicate()`):**
 - Uploads WAV file to Replicate's file storage API
@@ -256,7 +274,7 @@ Clean Up Temp WAV File
 - Field name: `content` (multipart/form-data)
 - Returns: URL to uploaded file (`urls.get`)
 
-**Transcription (`_transcribe_audio()`):**
+**Transcription (`transcribe()`):**
 - Uses Replicate Python SDK (`replicate.run()`)
 - Model: `vaibhavs10/incredibly-fast-whisper:3ab86df6c8f54c11309d4d1f930ac292bad43ace52d10c80d87eb258b3c9f79c`
 - Input parameters:
@@ -266,27 +284,29 @@ Clean Up Temp WAV File
   - `timestamp`: 'chunk' or 'word'
   - `batch_size`: 64 (optimized for speed)
   - `diarise_audio`: False (speaker diarization disabled)
+- Handles various response formats (string, dict with 'text' key, list, etc.)
+- Returns transcribed text as a string
 
 **Important Notes:**
 - The model requires a version tag (specific commit hash)
 - Audio must be uploaded first to get a URL (cannot pass file directly)
-- The API returns transcribed text as a string
+- The API returns transcribed text in various formats (handled by provider)
 
-#### 5. Vocabulary Correction (`start.py` - `_apply_vocabulary_corrections()`)
+#### 6. Vocabulary Correction (`start.py` - `_apply_vocabulary_corrections()`)
 
 - Uses regex for case-insensitive pattern matching
 - Matches common mispronunciations against `CUSTOM_VOCABULARY`
 - Replaces matches with canonical terms
 - Applied after transcription, before pasting
 
-#### 6. Text Insertion (`start.py` - `_paste_text()`)
+#### 7. Text Insertion (`start.py` - `_paste_text()`)
 
 - Copies text to clipboard using `pyperclip.copy()`
 - Triggers Ctrl+V using `pyautogui.hotkey('ctrl', 'v')`
 - Includes small delay to ensure clipboard is ready
 - Falls back gracefully if paste fails (text still saved to recordings.json)
 
-#### 7. Persistence (`start.py` - `_save_transcription()`)
+#### 8. Persistence (`start.py` - `_save_transcription()`)
 
 - Saves all transcriptions to `recordings.json`
 - Format: JSON array of objects with `timestamp` and `transcription`
@@ -402,6 +422,8 @@ The application includes a plugin-based status indicator system that shows the c
 
 #### Creating Custom Plugins
 
+**📖 For detailed documentation on creating status plugins, see [NEW_STATUS_PLUGINS.md](NEW_STATUS_PLUGINS.md)**
+
 You can create custom status indicator plugins by:
 
 1. **Create a new plugin file** in the `plugins/` directory (e.g., `plugins/myplugin.py`)
@@ -452,6 +474,8 @@ The plugin system is designed to be extensible - you can create plugins for:
 - Web dashboards
 - Any other display mechanism you prefer
 
+**See [NEW_STATUS_PLUGINS.md](NEW_STATUS_PLUGINS.md) for a complete guide with examples, best practices, and troubleshooting.**
+
 ## Project Structure
 
 ```
@@ -459,18 +483,34 @@ voice2text/
 ├── start.py              # Main application script (VoiceDictationTool class)
 ├── config.py             # Configuration settings with env variable support
 ├── status_manager.py      # Status manager for tracking and broadcasting application state
+├── providers/            # Transcription provider implementations
+│   ├── __init__.py       # Provider factory
+│   ├── base.py           # Abstract base provider class
+│   └── replicate.py      # Replicate provider implementation
 ├── plugins/              # Status indicator plugins directory
 │   ├── __init__.py       # Plugin package initialization
 │   ├── base.py           # Base class for status indicator plugins
-│   └── i3status.py       # i3 status bar plugin
+│   └── i3status/         # i3 status bar plugin
+│       ├── __init__.py
+│       └── README.md
+├── tests/                # Test suite
+│   ├── conftest.py       # Shared test fixtures
+│   ├── test_providers/    # Provider tests
+│   ├── test_audio/        # Audio recording tests
+│   ├── test_integration/ # Integration tests
+│   └── fixtures/         # Test data and audio files
 ├── requirements.txt      # Python dependencies
+├── pytest.ini           # Pytest configuration
 ├── .env.example          # Example environment variables file
 ├── .env                  # Your environment variables (create from .env.example)
 ├── .gitignore            # Git ignore rules
 ├── run.sh                # Helper script for Linux (requires sudo for global hotkeys)
+├── run_tests.sh          # Helper script to run pytest with virtual environment
 ├── recordings.json       # Transcription history (created automatically)
 ├── temp/                 # Temporary audio files directory
 ├── venv/                 # Virtual environment (created during setup)
+├── NEW_PROVIDERS.md      # Developer guide for creating new transcription providers
+├── NEW_STATUS_PLUGINS.md # Developer guide for creating new status plugins
 └── README.md             # This file
 ```
 
@@ -481,8 +521,11 @@ voice2text/
 - **`status_manager.py`**: Status manager that tracks application state and notifies registered plugins
 - **`plugins/`**: Directory containing status indicator plugins
   - **`base.py`**: Base class (`StatusPlugin`) that all plugins must inherit from
-  - **`i3status.py`**: Plugin for i3 status bar integration
+  - **`i3status/`**: Plugin for i3 status bar integration
+- **`NEW_PROVIDERS.md`**: Comprehensive developer guide for implementing new transcription providers
+- **`NEW_STATUS_PLUGINS.md`**: Comprehensive developer guide for implementing new status indicator plugins
 - **`run.sh`**: Helper script for Linux that automatically uses sudo with the correct Python path. **Requires sudo privileges** - it will prompt for your password to enable global keyboard hotkey detection.
+- **`run_tests.sh`**: Helper script that automatically runs pytest using the virtual environment's Python interpreter. This ensures tests use the correct Python environment and dependencies without requiring manual activation of the venv.
 - **`recordings.json`**: JSON file storing all transcription history with timestamps
 - **`temp/`**: Directory for temporary WAV files (automatically cleaned up after processing)
 
@@ -641,20 +684,28 @@ If the status indicator doesn't appear in your i3 status bar:
 - Saved as WAV file using `scipy.io.wavfile.write()`
 - File is saved with timestamp in filename for uniqueness
 
-### 4. Replicate API Workflow
+### 4. Transcription Provider Workflow
 
-**Step 1: File Upload**
+The application uses a provider-based architecture for transcription:
+
+**Step 1: Provider Initialization**
+- Provider factory creates appropriate provider based on `config.PROVIDER`
+- Default provider is 'replicate' (ReplicateProvider)
+- Provider is initialized with API token and settings
+
+**Step 2: File Upload (ReplicateProvider)**
 - Opens the WAV file in binary mode
 - Creates multipart form-data with field name `content`
 - POSTs to `https://api.replicate.com/v1/files`
 - Includes Authorization header with API token
 - Receives JSON response with file URL
 
-**Step 2: Transcription**
+**Step 3: Transcription (ReplicateProvider)**
 - Uses the file URL from upload step
 - Calls `replicate.run()` with model name and parameters
 - Model processes audio and returns transcribed text
-- Text is returned as a string
+- Handles various response formats (string, dict, list)
+- Returns transcribed text as a string
 
 ### 5. Post-Processing
 
@@ -728,6 +779,8 @@ If the status indicator doesn't appear in your i3 status bar:
 4. **Threading for Recording**: Separate thread allows responsive stopping without blocking
 5. **Environment Variables**: All configurable values support .env overrides with validation
 6. **Plugin Architecture**: Status indicators use a plugin system for extensibility, allowing users to create custom displays
+7. **Provider Architecture**: Transcription providers use abstract base classes for extensibility, following OOP principles (abstraction, inheritance, polymorphism)
+8. **Comprehensive Testing**: Full test suite with unit tests, integration tests, and proper mocking for external dependencies
 
 ### Known Issues & Workarounds
 
@@ -736,7 +789,220 @@ If the status indicator doesn't appear in your i3 status bar:
 3. **File Upload Format**: Required using 'content' field name, not 'file'
 4. **Model Version**: Must include specific commit hash version tag
 
+## Testing
+
+The project includes a comprehensive test suite using pytest. All tests use proper mocking for external dependencies (APIs, system calls) while ensuring real functionality is validated.
+
+### Running Tests
+
+First, ensure test dependencies are installed:
+
+```bash
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+**Recommended**: Use the helper script to automatically use the virtual environment's pytest:
+
+```bash
+./run_tests.sh
+```
+
+Alternatively, you can activate the virtual environment and run pytest directly:
+
+```bash
+source venv/bin/activate
+pytest
+```
+
+#### Run All Tests
+
+```bash
+./run_tests.sh
+```
+
+Or with activated venv:
+```bash
+pytest
+```
+
+#### Run Only Unit Tests (Fast, No Network Required)
+
+```bash
+./run_tests.sh -m "not integration"
+```
+
+Or with activated venv:
+```bash
+pytest -m "not integration"
+```
+
+#### Run Integration Tests (Requires Network/API Token)
+
+```bash
+./run_tests.sh -m integration
+```
+
+Or with activated venv:
+```bash
+pytest -m integration
+```
+
+#### Run Tests with Coverage Report
+
+```bash
+./run_tests.sh --cov=providers --cov=start --cov=status_manager --cov=plugins --cov-report=html
+```
+
+Or with activated venv:
+```bash
+pytest --cov=providers --cov=start --cov=status_manager --cov=plugins --cov-report=html
+```
+
+This generates an HTML coverage report in `htmlcov/index.html`.
+
+#### Run Specific Test Files
+
+```bash
+# Test providers only
+./run_tests.sh tests/test_providers/
+
+# Test audio functionality only
+./run_tests.sh tests/test_audio/
+
+# Test status plugins only
+./run_tests.sh tests/test_plugins/
+
+# Test integration/workflow only
+./run_tests.sh tests/test_integration/
+
+# Run a specific test file
+./run_tests.sh tests/test_providers/test_replicate.py
+```
+
+Or with activated venv, use `pytest` instead of `./run_tests.sh`.
+
+#### Verbose Output
+
+```bash
+./run_tests.sh -v
+```
+
+Or with activated venv:
+```bash
+pytest -v
+```
+
+### Test Structure
+
+The test suite is organized into the following directories:
+
+```
+tests/
+  ├── conftest.py              # Shared fixtures and test utilities
+  ├── test_providers/
+  │   ├── test_base.py         # Base provider interface tests
+  │   ├── test_replicate.py    # ReplicateProvider unit tests (mocked)
+  │   └── test_replicate_integration.py  # Real API tests (optional)
+  ├── test_audio/
+  │   ├── test_recording.py    # Audio recording logic tests
+  │   └── test_file_handling.py # WAV file save/load tests
+  ├── test_plugins/
+  │   ├── test_status_manager.py  # StatusManager tests
+  │   ├── test_base.py            # StatusPlugin base class tests
+  │   └── test_i3status.py        # I3StatusPlugin implementation tests
+  ├── test_integration/
+  │   └── test_full_workflow.py # End-to-end workflow tests
+  └── fixtures/
+      └── test_audio.wav       # Test audio file for integration tests
+```
+
+### Test Coverage
+
+The test suite covers:
+
+- **Provider Abstraction**: Base class interface, ReplicateProvider implementation
+- **Audio Recording**: Recording logic, chunk handling, duration limits
+- **File Operations**: WAV saving, format conversion, cleanup
+- **Paste Functionality**: Clipboard operations, paste triggering
+- **Vocabulary Corrections**: Text correction logic
+- **Status Plugin System**: StatusManager, StatusPlugin base class, I3StatusPlugin implementation
+- **Error Handling**: Network errors, API errors, file errors, plugin errors
+- **Integration**: End-to-end workflow validation
+
+### Test Types
+
+#### Unit Tests
+
+Fast tests that use mocking for external dependencies:
+- Provider initialization and configuration
+- API request/response handling (mocked)
+- Audio data processing
+- File I/O operations
+- Vocabulary corrections
+- Status manager and plugin system
+
+Run with: `pytest -m "not integration"`
+
+#### Integration Tests
+
+Tests that verify the complete workflow:
+- Full recording → transcription → paste flow
+- Provider integration with VoiceDictationTool
+- Error handling in real scenarios
+- File cleanup and resource management
+
+Run with: `pytest -m integration`
+
+#### Real API Tests (Optional)
+
+Tests that make actual API calls to Replicate:
+- Marked with `@pytest.mark.integration` and `@pytest.mark.slow`
+- Require `REPLICATE_API_TOKEN` environment variable
+- Will be skipped if token is not available
+- Useful for verifying API compatibility
+
+Run with: `pytest -m integration`
+
+### Writing New Tests
+
+When adding new features, follow these guidelines:
+
+1. **Use fixtures from `conftest.py`**: Reuse existing mocks and test data
+2. **Mock external dependencies**: APIs, system calls, file I/O
+3. **Test real logic**: Don't mock core business logic
+4. **Test error paths**: Verify error handling works correctly
+5. **Use appropriate markers**: Mark integration tests with `@pytest.mark.integration`
+
+Example test:
+
+```python
+@pytest.mark.unit
+def test_new_feature(mock_audio_data, temp_dir):
+    """Test description."""
+    # Test implementation
+    assert result == expected
+```
+
+### Test Configuration
+
+Test configuration is in `pytest.ini`:
+- Test discovery patterns
+- Coverage settings
+- Markers for different test types
+- Timeout settings (300 seconds default)
+
+### Continuous Integration
+
+The test suite is designed to run in CI environments:
+- Unit tests run quickly without network access
+- Integration tests are optional and can be skipped
+- Coverage reports help identify untested code
+- All tests use proper mocking to avoid external dependencies
+
 ### Testing Recommendations
+
+For manual testing, consider:
 
 - Test with different audio devices
 - Test with various recording durations
