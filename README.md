@@ -394,42 +394,11 @@ The application includes a plugin-based status indicator system that shows the c
 #### Built-in Plugins
 
 **i3 Status Bar Plugin** (`i3status`):
-- Writes status to a JSON file that i3bar can read
-- Shows "🔴 Recording..." in red when recording
-- Shows "🔄 Processing..." in orange when processing
-- Hides indicator when idle
-- Status file location: `/tmp/voice2text_status` (configurable)
+- Displays voice2text status in your i3bar
+- Shows recording and processing states with visual indicators
+- Uses a wrapper script to inject status into i3status output
 
-#### Configuring i3 Status Bar Integration
-
-1. **Enable the plugin** in your `.env` file (enabled by default):
-   ```env
-   STATUS_PLUGINS=i3status
-   I3_STATUS_FILE=/tmp/voice2text_status
-   ```
-
-2. **Configure i3bar** to read the status file. Add this to your i3 config (`~/.config/i3/config`):
-   ```bash
-   # Read voice2text status
-   bar {
-       status_command while :; do
-           if [ -f /tmp/voice2text_status ]; then
-               cat /tmp/voice2text_status | jq -c .
-           fi
-           sleep 1
-       done
-   }
-   ```
-
-   Or use a custom status script that reads the file and formats it for i3bar. The status file contains JSON in i3bar format:
-   ```json
-   {
-     "full_text": "🔴 Recording...",
-     "color": "#ff0000",
-     "name": "voice2text",
-     "instance": "voice2text"
-   }
-   ```
+**📖 For complete setup instructions, configuration, and troubleshooting, see [plugins/i3status/README.md](plugins/i3status/README.md)**
 
 #### Creating Custom Plugins
 
@@ -642,32 +611,13 @@ Or use the helper script (requires sudo):
 
 ### Status Indicator Not Showing in i3 Bar
 
-If the status indicator doesn't appear in your i3 status bar:
+**📖 For detailed troubleshooting steps, see [plugins/i3status/README.md](plugins/i3status/README.md#troubleshooting)**
 
-1. **Check that the plugin is enabled**:
-   ```bash
-   grep STATUS_PLUGINS .env
-   # Should show: STATUS_PLUGINS=i3status
-   ```
-
-2. **Verify the status file is being created**:
-   ```bash
-   # While the app is running and recording/processing
-   cat /tmp/voice2text_status
-   # Should show JSON with status information
-   ```
-
-3. **Check i3bar configuration**: Make sure your i3bar is configured to read the status file (see Status Indicators & Plugin System section above)
-
-4. **Check file permissions**: The status file should be readable by your user:
-   ```bash
-   ls -l /tmp/voice2text_status
-   ```
-
-5. **Check plugin initialization**: When starting the app, you should see:
-   ```
-   ✓ i3 status plugin enabled (status file: /tmp/voice2text_status)
-   ```
+Common issues include:
+- Plugin not enabled in `.env` file
+- i3bar not configured to use the wrapper script
+- Status file permissions or path issues
+- JSON parsing errors in the wrapper script
 
 ## How It Works (Detailed)
 
