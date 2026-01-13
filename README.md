@@ -1,6 +1,8 @@
-# 🎙️ Voice Dictation Tool
+# 🎙️ EchoWrite: The Voice Dictation Tool
 
 A local Python application that captures voice input via global hotkeys, transcribes speech using Replicate's incredibly-fast-whisper model, and automatically pastes the result wherever your cursor is positioned.
+
+**Platform note:** This project is currently developed for and tested on Linux only. macOS and Windows are not supported at this time.
 
 ## Features
 
@@ -23,7 +25,7 @@ A local Python application that captures voice input via global hotkeys, transcr
 ### System Requirements
 
 - Python 3.8 or higher
-- Linux, macOS, or Windows
+- Linux (tested)
 - Microphone access
 - Internet connection (for Replicate API)
 
@@ -37,13 +39,9 @@ sudo apt-get install portaudio19-dev python3-dev
 sudo apt-get install xclip  # Required for clipboard functionality
 ```
 
-#### macOS
+#### Other platforms
 
-No additional system dependencies required (uses built-in audio system).
-
-#### Windows
-
-No additional system dependencies required.
+macOS and Windows have not been tested and are not supported in the current release.
 
 ### Python Dependencies
 
@@ -157,14 +155,7 @@ source venv/bin/activate
 sudo $(which python) start.py
 ```
 
-**On macOS/Windows**:
-
-```bash
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-python start.py
-```
-
-**Note**: On Linux, the `keyboard` library requires root permissions for global hotkey detection. Use `sudo` with the full path to your virtual environment's Python interpreter (`venv/bin/python`) to ensure it uses the correct Python and installed packages.
+**Note**: On Linux, the `keyboard` library requires root permissions for global hotkey detection. Use `sudo` with the full path to your virtual environment's Python interpreter (`venv/bin/python`) to ensure it uses the correct Python and installed packages. Other operating systems are not currently supported or tested.
 
 3. **Select your audio input device** when prompted (or press Enter for default)
 
