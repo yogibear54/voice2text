@@ -16,15 +16,14 @@ class TestPasteFunctionality:
     @pytest.fixture
     def voice_tool(self, replicate_provider):
         """Create VoiceDictationTool instance for testing."""
-        with patch('start.select_audio_device'), \
-             patch('start.StatusManager'), \
+        with patch('start.StatusManager'), \
              patch('start.create_provider', return_value=replicate_provider):
             tool = VoiceDictationTool()
             tool.selected_device = 0
             return tool
     
     @patch('start.pyperclip.copy')
-    @patch('start.pyautogui.hotkey')
+    @patch('pyautogui.hotkey')
     @patch('start.time.sleep')
     def test_text_is_copied_to_clipboard(self, mock_sleep, mock_hotkey, mock_copy, voice_tool):
         """Test text is copied to clipboard."""
@@ -35,7 +34,7 @@ class TestPasteFunctionality:
         mock_copy.assert_called_once_with(test_text)
     
     @patch('start.pyperclip.copy')
-    @patch('start.pyautogui.hotkey')
+    @patch('pyautogui.hotkey')
     @patch('start.time.sleep')
     def test_clipboard_contains_correct_text(self, mock_sleep, mock_hotkey, mock_copy, voice_tool):
         """Test clipboard contains correct text."""
@@ -52,7 +51,7 @@ class TestPasteFunctionality:
         assert copied_text[0] == test_text
     
     @patch('start.pyperclip.copy')
-    @patch('start.pyautogui.hotkey')
+    @patch('pyautogui.hotkey')
     @patch('start.time.sleep')
     def test_paste_handles_clipboard_errors(self, mock_sleep, mock_hotkey, mock_copy, voice_tool):
         """Test clipboard operations handle errors."""
@@ -63,7 +62,7 @@ class TestPasteFunctionality:
         assert result is False
     
     @patch('start.pyperclip.copy')
-    @patch('start.pyautogui.hotkey')
+    @patch('pyautogui.hotkey')
     @patch('start.time.sleep')
     def test_ctrl_v_hotkey_is_triggered(self, mock_sleep, mock_hotkey, mock_copy, voice_tool):
         """Test Ctrl+V hotkey is triggered."""
@@ -74,7 +73,7 @@ class TestPasteFunctionality:
         mock_hotkey.assert_called_once_with('ctrl', 'v')
     
     @patch('start.pyperclip.copy')
-    @patch('start.pyautogui.hotkey')
+    @patch('pyautogui.hotkey')
     @patch('start.time.sleep')
     def test_paste_is_called_with_correct_text(self, mock_sleep, mock_hotkey, mock_copy, voice_tool):
         """Test paste is called with correct text."""
@@ -86,7 +85,7 @@ class TestPasteFunctionality:
         mock_hotkey.assert_called_with('ctrl', 'v')
     
     @patch('start.pyperclip.copy')
-    @patch('start.pyautogui.hotkey')
+    @patch('pyautogui.hotkey')
     @patch('start.time.sleep')
     def test_paste_error_handling(self, mock_sleep, mock_hotkey, mock_copy, voice_tool):
         """Test paste error handling."""
@@ -104,8 +103,7 @@ class TestVocabularyCorrections:
     @pytest.fixture
     def voice_tool(self, replicate_provider):
         """Create VoiceDictationTool instance for testing."""
-        with patch('start.select_audio_device'), \
-             patch('start.StatusManager'), \
+        with patch('start.StatusManager'), \
              patch('start.create_provider', return_value=replicate_provider):
             tool = VoiceDictationTool()
             return tool
@@ -154,8 +152,7 @@ class TestFullWorkflow:
     @pytest.fixture
     def voice_tool(self, replicate_provider, temp_dir):
         """Create VoiceDictationTool instance for testing."""
-        with patch('start.select_audio_device', return_value=0), \
-             patch('start.StatusManager'), \
+        with patch('start.StatusManager'), \
              patch('start.create_provider', return_value=replicate_provider):
             tool = VoiceDictationTool()
             tool.temp_dir = temp_dir
@@ -163,7 +160,7 @@ class TestFullWorkflow:
             return tool
     
     @patch('start.pyperclip.copy')
-    @patch('start.pyautogui.hotkey')
+    @patch('pyautogui.hotkey')
     @patch('start.time.sleep')
     @patch('providers.replicate.replicate.run')
     @patch('providers.replicate.requests.post')
@@ -240,7 +237,7 @@ class TestFullWorkflow:
         assert voice_tool.recording_start_time is not None
     
     @patch('start.pyperclip.copy')
-    @patch('start.pyautogui.hotkey')
+    @patch('pyautogui.hotkey')
     @patch('providers.replicate.replicate.run')
     @patch('providers.replicate.requests.post')
     def test_transcription_failure_handling(self, mock_post, mock_replicate_run, 
@@ -263,11 +260,11 @@ class TestFullWorkflow:
         mock_hotkey.assert_not_called()
     
     @patch('start.pyperclip.copy')
-    @patch('start.pyautogui.hotkey')
+    @patch('pyautogui.hotkey')
     @patch('providers.replicate.replicate.run')
     @patch('providers.replicate.requests.post')
-    @patch('builtins.open', create=True)
-    @patch('os.path.exists')
+    @patch('providers.replicate.open', create=True)
+    @patch('providers.replicate.os.path.exists')
     def test_paste_failure_doesnt_prevent_saving(self, mock_exists, mock_file, mock_post, 
                                                 mock_replicate_run, mock_hotkey, mock_copy,
                                                 voice_tool, mock_audio_data, temp_dir,
@@ -276,7 +273,7 @@ class TestFullWorkflow:
         import config
         from datetime import datetime
         
-        # Setup mocks
+        # Setup mocks for file upload only
         mock_exists.return_value = True
         mock_response = MagicMock()
         mock_response.json.return_value = mock_replicate_upload_response
@@ -285,12 +282,17 @@ class TestFullWorkflow:
         mock_replicate_run.return_value = mock_replicate_transcribe_string
         mock_hotkey.side_effect = Exception("Paste failed")
         
+        # Mock file open for audio file upload (in providers.replicate)
+        from unittest.mock import mock_open
+        mock_file.return_value = mock_open(read_data=b'fake audio data').return_value
+        
         voice_tool.audio_data = mock_audio_data
         voice_tool.status_manager = MagicMock()
         
-        # Mock recordings file
+        # Set recordings file to temp directory (real file operations)
         recordings_file = temp_dir / "recordings.json"
         voice_tool.recordings_file = recordings_file
+        # Create empty recordings file
         with open(recordings_file, 'w') as f:
             json.dump([], f)
         

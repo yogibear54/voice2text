@@ -10,7 +10,6 @@ import keyboard
 import sounddevice as sd
 import numpy as np
 import pyperclip
-import pyautogui
 from dotenv import load_dotenv
 from scipy.io.wavfile import write as wav_write
 
@@ -222,6 +221,9 @@ class VoiceDictationTool:
     def _paste_text(self, text: str) -> bool:
         """Copy text to clipboard and paste it."""
         try:
+            # Lazy import pyautogui to avoid X11 connection issues during import
+            import pyautogui
+            
             # Copy to clipboard
             pyperclip.copy(text)
             time.sleep(0.1)  # Small delay to ensure clipboard is ready

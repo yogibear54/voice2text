@@ -17,10 +17,8 @@ class TestWAVFileHandling:
     @pytest.fixture
     def voice_tool(self, replicate_provider):
         """Create VoiceDictationTool instance for testing."""
-        with patch('start.select_audio_device'), \
-             patch('start.StatusManager'), \
+        with patch('start.StatusManager'), \
              patch('start.create_provider', return_value=replicate_provider):
-            from unittest.mock import patch
             tool = VoiceDictationTool()
             return tool
     
@@ -90,7 +88,12 @@ class TestWAVFileHandling:
         read_rate, read_data = wav_read(str(filename))
         
         assert read_rate == sample_rate
-        assert read_data.shape[1] == channels
+        # scipy.io.wavfile.read returns 1D array for mono, 2D for stereo
+        if channels == 1:
+            assert len(read_data.shape) == 1 or read_data.shape[1] == channels
+        else:
+            assert len(read_data.shape) == 2
+            assert read_data.shape[1] == channels
         assert len(read_data) > 0
     
     def test_save_wav_file_has_correct_sample_rate(self, voice_tool, mock_audio_data, temp_dir):

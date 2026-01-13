@@ -69,4 +69,5 @@ class TestTranscriptionProvider:
         params = list(sig.parameters.keys())
         
         assert 'audio_file_path' in params
-        assert len(params) == 1  # Only audio_file_path parameter
+        # For instance methods, inspect.signature includes 'self', so we expect 2 params total
+        assert len(params) == 2  # self + audio_file_path

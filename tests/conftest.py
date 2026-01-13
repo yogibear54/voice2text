@@ -193,6 +193,50 @@ def replicate_provider(mock_api_token, mock_api_settings):
 
 
 @pytest.fixture(autouse=True)
+def mock_pyautogui_module():
+    """Mock pyautogui module to prevent X11 connection issues during tests."""
+    import sys
+    from unittest.mock import MagicMock
+    
+    # Create a mock pyautogui module if it doesn't exist
+    if 'pyautogui' not in sys.modules:
+        mock_pyautogui = MagicMock()
+        mock_pyautogui.hotkey = MagicMock()
+        sys.modules['pyautogui'] = mock_pyautogui
+    else:
+        # If it already exists, ensure hotkey is mocked
+        if not hasattr(sys.modules['pyautogui'], 'hotkey'):
+            sys.modules['pyautogui'].hotkey = MagicMock()
+    
+    yield
+    
+    # Cleanup: remove mock if we added it
+    if 'pyautogui' in sys.modules and isinstance(sys.modules['pyautogui'], MagicMock):
+        del sys.modules['pyautogui']
+
+
+@pytest.fixture
+def temp_status_file(temp_dir: Path) -> Path:
+    """Create temporary status file path for testing."""
+    return temp_dir / "test_status.json"
+
+
+@pytest.fixture
+def mock_plugin():
+    """Create a mock plugin for testing StatusManager."""
+    plugin = MagicMock()
+    plugin.update_status = Mock()
+    plugin.cleanup = Mock()
+    return plugin
+
+
+@pytest.fixture
+def incomplete_plugin():
+    """Create a plugin without update_status method."""
+    return MagicMock()  # No update_status method
+
+
+@pytest.fixture(autouse=True)
 def cleanup_env():
     """Clean up environment variables after each test."""
     original_token = os.environ.get('REPLICATE_API_TOKEN')

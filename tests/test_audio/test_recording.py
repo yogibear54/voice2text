@@ -16,8 +16,7 @@ class TestAudioRecording:
     @pytest.fixture
     def voice_tool(self, replicate_provider):
         """Create VoiceDictationTool instance for testing."""
-        with patch('start.select_audio_device'), \
-             patch('start.StatusManager'), \
+        with patch('start.StatusManager'), \
              patch('start.create_provider', return_value=replicate_provider):
             tool = VoiceDictationTool()
             # Mock selected device
